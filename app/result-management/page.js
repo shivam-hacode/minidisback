@@ -28,6 +28,7 @@ const page = () => {
 	const [results, setResults] = useState([]);
 	const [selectedResult, setSelectedResult] = useState(null); // for edit
 	const [submitting, setSubmitting] = useState(false); // loading state for submit
+	const [deleting, setDeleting] = useState(false); // loading state for delete
 	const [form, setForm] = useState({
 		categoryname: 'Minidiswar',
 		date: moment().format('YYYY-MM-DD'),
@@ -189,6 +190,7 @@ const page = () => {
 		console.log(date, time);
 		if (!window.confirm(`Delete entry at ${time} on ${date}?`)) return;
 
+		setDeleting(true);
 		axios
 			.patch(
 				`${HOST}/delete-existing-result/${id}`,
@@ -199,18 +201,26 @@ const page = () => {
 					},
 				}
 			)
-			.then(() => apiforResults()) // reload list
-			.catch((err) => console.error(err));
+			.then(() => {
+				setDeleting(false);
+				apiforResults(); // reload list
+			})
+			.catch((err) => {
+				setDeleting(false);
+				console.error(err);
+			});
 	};
 
 	return (
 		<div className='admin-container'>
 			{/* Overlay Loader */}
-			{submitting && (
+			{(submitting || deleting) && (
 				<div className='overlay-loader'>
 					<div className='loader-content'>
 						<Spinner animation='border' variant='light' style={{ width: '3rem', height: '3rem' }} />
-						<p className='loader-text'>Updating Number...</p>
+						<p className='loader-text'>
+							{submitting ? 'Updating Number...' : 'Deleting Entry...'}
+						</p>
 					</div>
 				</div>
 			)}
@@ -420,6 +430,7 @@ const page = () => {
 																								size='sm'
 																								variant='warning'
 																								className='action-btn'
+																								disabled={submitting || deleting}
 																								onClick={() =>
 																									handleEdit(res, r.date, t.time)
 																								}>
@@ -429,6 +440,7 @@ const page = () => {
 																								size='sm'
 																								variant='danger'
 																								className='action-btn'
+																								disabled={deleting}
 																								onClick={() =>
 																									handleDeleteTime(
 																										res._id,
@@ -436,7 +448,11 @@ const page = () => {
 																										r.date
 																									)
 																								}>
-																								<FiTrash2 />
+																								{deleting ? (
+																									<Spinner animation='border' size='sm' />
+																								) : (
+																									<FiTrash2 />
+																								)}
 																							</Button>
 																						</div>
 																					</div>

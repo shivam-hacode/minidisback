@@ -1,7 +1,7 @@
 'use client';
 import axios from 'axios';
 import React, { useEffect, useState } from 'react';
-import { Table, Button, Form, Row, Col, Card, Badge } from 'react-bootstrap';
+import { Table, Button, Form, Row, Col, Card, Badge, Spinner } from 'react-bootstrap';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import Tab from 'react-bootstrap/Tab';
 import Tabs from 'react-bootstrap/Tabs';
@@ -27,6 +27,7 @@ const page = () => {
 	const router = useRouter();
 	const [results, setResults] = useState([]);
 	const [selectedResult, setSelectedResult] = useState(null); // for edit
+	const [submitting, setSubmitting] = useState(false); // loading state for submit
 	const [form, setForm] = useState({
 		categoryname: 'Minidiswar',
 		date: moment().format('YYYY-MM-DD'),
@@ -73,6 +74,7 @@ const page = () => {
 
 	const handleAddResult = (e) => {
 		e.preventDefault();
+		setSubmitting(true);
 
 				// Add new result
 		axios
@@ -101,6 +103,7 @@ const page = () => {
 				}
 			)
 			.then((res) => {
+				setSubmitting(false);
 				if (res.data.message === 'Result saved successfully') {
 					Swal.fire({
 						icon: 'success',
@@ -124,7 +127,10 @@ const page = () => {
 					setLastManualSubmit(moment());
 				}
 			})
-			.catch(console.error);
+			.catch((err) => {
+				setSubmitting(false);
+				console.error(err);
+			});
 	};
 
 	const resetForm = () => {
@@ -199,6 +205,15 @@ const page = () => {
 
 	return (
 		<div className='admin-container'>
+			{/* Overlay Loader */}
+			{submitting && (
+				<div className='overlay-loader'>
+					<div className='loader-content'>
+						<Spinner animation='border' variant='light' style={{ width: '3rem', height: '3rem' }} />
+						<p className='loader-text'>Updating Number...</p>
+					</div>
+				</div>
+			)}
 			{/* Header with Logout */}
 			<div className='admin-header'>
 				<div className='admin-header-content'>
@@ -322,8 +337,16 @@ const page = () => {
 											<Button
 												type='submit'
 												variant='primary'
-												className='submit-btn'>
-												{selectedResult ? 'Update Result' : 'Submit'}
+												className='submit-btn'
+												disabled={submitting}>
+												{submitting ? (
+													<>
+														<Spinner animation='border' size='sm' className='me-2' />
+														Updating...
+													</>
+												) : (
+													selectedResult ? 'Update Result' : 'Submit'
+												)}
 											</Button>
 											{selectedResult && (
 												<Button

@@ -183,6 +183,15 @@ const EditResultPage = () => {
 
 	return (
 		<div className='container py-4'>
+			{/* Overlay Loader */}
+			{saving && (
+				<div className='overlay-loader'>
+					<div className='loader-content'>
+						<Spinner animation='border' variant='light' style={{ width: '3rem', height: '3rem' }} />
+						<p className='loader-text'>Updating Number...</p>
+					</div>
+				</div>
+			)}
 			<Card>
 				<Card.Header>Edit Result</Card.Header>
 				<Card.Body>

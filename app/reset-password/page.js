@@ -5,7 +5,7 @@ import { Form, Button, Card, Container, Alert, Spinner, Badge } from 'react-boot
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { HOST } from '../../static';
 import { FiMail, FiLock, FiKey, FiArrowLeft } from 'react-icons/fi';
-import '../Components/Authentication/Login.css';
+import '../../Components/Authentication/Login.css';
 
 const PasswordResetForm = () => {
 	const [step, setStep] = useState(1);

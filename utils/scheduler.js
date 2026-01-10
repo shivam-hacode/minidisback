@@ -157,8 +157,15 @@ export const sendAutoNumber = async (timeSlot, number = '00') => {
 /**
  * Main scheduler function
  * Should be called every second to check if it's time to trigger
+ * Only runs if scheduler is enabled
  */
 export const runScheduler = async () => {
+	// Check if scheduler is enabled from localStorage
+	const schedulerEnabled = localStorage.getItem('schedulerEnabled');
+	if (schedulerEnabled === 'false') {
+		return false; // Scheduler is disabled
+	}
+	
 	if (!isSchedulerTriggerTime()) {
 		return false;
 	}

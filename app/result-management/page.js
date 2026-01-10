@@ -9,7 +9,7 @@ import moment from 'moment';
 import { HOST } from '../../static';
 import { useRouter } from 'next/navigation';
 import Swal from 'sweetalert2';
-import { FiLogOut, FiEdit2, FiTrash2, FiPlus, FiX, FiClock, FiInfo } from 'react-icons/fi';
+import { FiLogOut, FiEdit2, FiTrash2, FiPlus, FiX, FiClock, FiInfo, FiPower } from 'react-icons/fi';
 import { runScheduler, getNextSchedulerTime, getCurrentTimeSlot } from '../../utils/scheduler';
 import './admin.css';
 
@@ -44,6 +44,11 @@ const page = () => {
 	const [currentTime, setCurrentTime] = useState(moment());
 	const [nextSchedulerTime, setNextSchedulerTime] = useState(getNextSchedulerTime());
 	const [schedulerStatus, setSchedulerStatus] = useState('Active');
+	const [schedulerEnabled, setSchedulerEnabled] = useState(() => {
+		// Load from localStorage, default to true
+		const saved = localStorage.getItem('schedulerEnabled');
+		return saved !== null ? saved === 'true' : true;
+	});
 
 	// Logout function
 	const handleLogout = () => {
@@ -190,6 +195,16 @@ const page = () => {
 		apiforResults();
 	}, []);
 
+	// Save scheduler state to localStorage when it changes
+	useEffect(() => {
+		localStorage.setItem('schedulerEnabled', schedulerEnabled.toString());
+		if (schedulerEnabled) {
+			setSchedulerStatus('Active');
+		} else {
+			setSchedulerStatus('Disabled');
+		}
+	}, [schedulerEnabled]);
+
 	// Update current time every second and run scheduler
 	useEffect(() => {
 		const timer = setInterval(() => {
@@ -201,22 +216,24 @@ const page = () => {
 				setNextSchedulerTime(getNextSchedulerTime());
 			}
 			
-			// Run scheduler check (runs at 14:45 of each 15-minute interval)
-			runScheduler().then((sent) => {
-				if (sent) {
-					setSchedulerStatus('Last sent: ' + now.format('hh:mm:ss A'));
-					// Refresh results after auto send
-					setTimeout(() => {
-						apiforResults();
-						setSchedulerStatus('Active');
-					}, 2000);
-				}
-			}).catch((err) => {
-				console.error('Scheduler error:', err);
-			});
+			// Run scheduler check only if enabled (runs at 14:45 of each 15-minute interval)
+			if (schedulerEnabled) {
+				runScheduler().then((sent) => {
+					if (sent) {
+						setSchedulerStatus('Last sent: ' + now.format('hh:mm:ss A'));
+						// Refresh results after auto send
+						setTimeout(() => {
+							apiforResults();
+							setSchedulerStatus('Active');
+						}, 2000);
+					}
+				}).catch((err) => {
+					console.error('Scheduler error:', err);
+				});
+			}
 		}, 1000);
 		return () => clearInterval(timer);
-	}, []);
+	}, [schedulerEnabled]);
 
 	// Delete one time entry
 	const handleDeleteTime = (id, time, date) => {
@@ -264,14 +281,25 @@ const page = () => {
 						<h1 className='admin-title'>Minidiswa</h1>
 						<p className='header-mantra'>ॐ नमो भगवते वासुदेवाय नमः</p>
 					</div>
-					<Button
-						variant='danger'
-						size='sm'
-						className='logout-btn'
-						onClick={handleLogout}>
-						<FiLogOut className='me-1' />
-						Logout
-					</Button>
+					<div className='admin-header-right'>
+						<Button
+							variant={schedulerEnabled ? 'success' : 'secondary'}
+							size='sm'
+							className='scheduler-toggle-btn me-2'
+							onClick={() => setSchedulerEnabled(!schedulerEnabled)}
+							title={schedulerEnabled ? 'Scheduler is ON - Click to turn OFF' : 'Scheduler is OFF - Click to turn ON'}>
+							<FiPower className='me-1' />
+							{schedulerEnabled ? 'Scheduler ON' : 'Scheduler OFF'}
+						</Button>
+						<Button
+							variant='danger'
+							size='sm'
+							className='logout-btn'
+							onClick={handleLogout}>
+							<FiLogOut className='me-1' />
+							Logout
+						</Button>
+					</div>
 				</div>
 			</div>
 
@@ -664,8 +692,14 @@ const page = () => {
 										<strong>Scheduler Status:</strong>
 									</div>
 									<div className='scheduler-info-value'>
-										<Badge bg={schedulerStatus.includes('Last sent') ? 'warning' : 'success'} style={{ fontSize: '1rem', padding: '0.4rem 0.8rem' }}>
-											{schedulerStatus}
+										<Badge 
+											bg={
+												!schedulerEnabled ? 'secondary' : 
+												schedulerStatus.includes('Last sent') ? 'warning' : 
+												'success'
+											} 
+											style={{ fontSize: '1rem', padding: '0.4rem 0.8rem' }}>
+											{schedulerEnabled ? schedulerStatus : 'Disabled'}
 										</Badge>
 									</div>
 								</Col>
@@ -673,8 +707,12 @@ const page = () => {
 							<div className='mt-3 scheduler-note'>
 								<p className='mb-0 text-muted'>
 									<FiInfo className='me-2' />
-									<strong>Note:</strong> Scheduler automatically sends numbers at <strong>14:45</strong> of each 15-minute interval (e.g., 10:14:45, 10:29:45, 10:44:45, 10:59:45). 
-									If a manual entry is added via "Add Result" form for that time slot, the scheduler will <strong>skip</strong> sending for that slot.
+									<strong>Note:</strong> {schedulerEnabled ? (
+										<>Scheduler automatically sends numbers at <strong>14:45</strong> of each 15-minute interval (e.g., 10:14:45, 10:29:45, 10:44:45, 10:59:45). 
+										If a manual entry is added via "Add Result" form for that time slot, the scheduler will <strong>skip</strong> sending for that slot.</>
+									) : (
+										<>Scheduler is currently <strong>OFF</strong>. Only manual entries via "Add Result" form will be saved. Turn ON the scheduler to enable automatic number sending every 15 minutes.</>
+									)}
 								</p>
 							</div>
 						</Card.Body>

@@ -45,6 +45,7 @@ const page = () => {
 	const [nextSchedulerTime, setNextSchedulerTime] = useState(getNextSchedulerTime());
 	const [schedulerStatus, setSchedulerStatus] = useState('Active');
 	const [schedulerEnabled, setSchedulerEnabled] = useState(true); // Default to true, will load from localStorage in useEffect
+	const [formLocked, setFormLocked] = useState(false); // Prevent form from auto-updating
 
 	// Logout function
 	const handleLogout = () => {
@@ -54,6 +55,11 @@ const page = () => {
 
 	const handleChange = (e) => {
 		const { name, value } = e.target;
+		
+		// Mark form as being used by user
+		if (!formLocked) {
+			setFormLocked(true);
+		}
 
 		if (name === 'time') {
 			const selectedTime = moment(`${form.date}T${value}`, 'YYYY-MM-DDTHH:mm');
@@ -148,7 +154,7 @@ const page = () => {
 		setForm({
 			categoryname: 'Minidiswar',
 			date: moment().format('YYYY-MM-DD'),
-			number: '',
+			number: '', // Always empty after reset
 			phone: '',
 			result: [{ time: '', number: '' }],
 			next_result: newNextResult,
@@ -156,6 +162,7 @@ const page = () => {
 			time: newRoundedTime,
 		});
 		setSelectedResult(null);
+		setFormLocked(false); // Unlock form after reset
 	};
 
 	const handleEdit = (res, date, time) => {
@@ -225,11 +232,12 @@ const page = () => {
 			}
 			
 			// Run scheduler check only if enabled (runs at 14:45 of each 15-minute interval)
-			if (schedulerEnabled) {
+			// IMPORTANT: Scheduler should NEVER update the form - only send to backend
+			if (schedulerEnabled && !formLocked) {
 				runScheduler().then((sent) => {
 					if (sent) {
 						setSchedulerStatus('Last sent: ' + now.format('hh:mm:ss A'));
-						// Refresh results after auto send
+						// Refresh results after auto send (but don't touch the form)
 						setTimeout(() => {
 							apiforResults();
 							setSchedulerStatus('Active');

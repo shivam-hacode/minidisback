@@ -9,7 +9,8 @@ import moment from 'moment';
 import { HOST } from '../../static';
 import { useRouter } from 'next/navigation';
 import Swal from 'sweetalert2';
-import { FiLogOut, FiEdit2, FiTrash2, FiPlus, FiX } from 'react-icons/fi';
+import { FiLogOut, FiEdit2, FiTrash2, FiPlus, FiX, FiClock, FiInfo } from 'react-icons/fi';
+import { runScheduler, getNextSchedulerTime, getCurrentTimeSlot } from '../../utils/scheduler';
 import './admin.css';
 
 const getRoundedISOTime = () => {
@@ -40,6 +41,9 @@ const page = () => {
 		time: roundedTimeISO,
 	});
 	const [lastManualSubmit, setLastManualSubmit] = useState(null);
+	const [currentTime, setCurrentTime] = useState(moment());
+	const [nextSchedulerTime, setNextSchedulerTime] = useState(getNextSchedulerTime());
+	const [schedulerStatus, setSchedulerStatus] = useState('Active');
 
 	// Logout function
 	const handleLogout = () => {
@@ -78,7 +82,7 @@ const page = () => {
 		setSubmitting(true);
 
 				// Add new result
-		axios
+				axios
 			.post(
 				`${HOST}/result`,
 				{
@@ -95,6 +99,7 @@ const page = () => {
 					date: form.date,
 					key: form.key,
 					phone: form.phone || '',
+					isManualEntry: true, // Flag to identify manual entries
 				},
 				{
 					headers: {
@@ -185,6 +190,34 @@ const page = () => {
 		apiforResults();
 	}, []);
 
+	// Update current time every second and run scheduler
+	useEffect(() => {
+		const timer = setInterval(() => {
+			const now = moment();
+			setCurrentTime(now);
+			
+			// Update next scheduler time every minute
+			if (now.second() === 0) {
+				setNextSchedulerTime(getNextSchedulerTime());
+			}
+			
+			// Run scheduler check (runs at 14:45 of each 15-minute interval)
+			runScheduler().then((sent) => {
+				if (sent) {
+					setSchedulerStatus('Last sent: ' + now.format('hh:mm:ss A'));
+					// Refresh results after auto send
+					setTimeout(() => {
+						apiforResults();
+						setSchedulerStatus('Active');
+					}, 2000);
+				}
+			}).catch((err) => {
+				console.error('Scheduler error:', err);
+			});
+		}, 1000);
+		return () => clearInterval(timer);
+	}, []);
+
 	// Delete one time entry
 	const handleDeleteTime = (id, time, date) => {
 		console.log(date, time);
@@ -243,6 +276,7 @@ const page = () => {
 			</div>
 
 			<div className='admin-content'>
+		
 
 			<Tabs
 				defaultActiveKey='result'
@@ -577,6 +611,76 @@ const page = () => {
 					</Row>
 				</Tab>
 			</Tabs>
+				{/* Scheduler Info Card */}
+				<Row className='mb-4'>
+				<Col xs={12}>
+					<Card className='admin-card scheduler-info-card'>
+						<Card.Header className='admin-card-header'>
+							<h3 className='mb-0'>
+								<FiClock className='me-2' />
+								Scheduler Information
+							</h3>
+						</Card.Header>
+						<Card.Body className='admin-card-body'>
+							<Row className='g-3'>
+								<Col xs={12} md={4}>
+									<div className='scheduler-info-item'>
+										<FiInfo className='me-2' style={{ color: '#667eea' }} />
+										<strong>Auto Send Interval:</strong>
+									</div>
+									<div className='scheduler-info-value'>
+										<Badge bg='primary' style={{ fontSize: '1.1rem', padding: '0.5rem 1rem' }}>
+											15 Minutes
+										</Badge>
+									</div>
+								</Col>
+								<Col xs={12} md={4}>
+									<div className='scheduler-info-item'>
+										<FiClock className='me-2' style={{ color: '#667eea' }} />
+										<strong>Current Time:</strong>
+									</div>
+									<div className='scheduler-info-value'>
+										<Badge bg='info' style={{ fontSize: '1.1rem', padding: '0.5rem 1rem' }}>
+											{currentTime.format('hh:mm:ss A')}
+										</Badge>
+									</div>
+								</Col>
+								<Col xs={12} md={4}>
+									<div className='scheduler-info-item'>
+										<FiClock className='me-2' style={{ color: '#10b981' }} />
+										<strong>Next Scheduler Trigger:</strong>
+									</div>
+									<div className='scheduler-info-value'>
+										<Badge bg='success' style={{ fontSize: '1.1rem', padding: '0.5rem 1rem' }}>
+											{nextSchedulerTime.format('hh:mm:ss A')}
+										</Badge>
+									</div>
+								</Col>
+							</Row>
+							<Row className='g-3 mt-2'>
+								<Col xs={12}>
+									<div className='scheduler-info-item'>
+										<FiInfo className='me-2' style={{ color: '#667eea' }} />
+										<strong>Scheduler Status:</strong>
+									</div>
+									<div className='scheduler-info-value'>
+										<Badge bg={schedulerStatus.includes('Last sent') ? 'warning' : 'success'} style={{ fontSize: '1rem', padding: '0.4rem 0.8rem' }}>
+											{schedulerStatus}
+										</Badge>
+									</div>
+								</Col>
+							</Row>
+							<div className='mt-3 scheduler-note'>
+								<p className='mb-0 text-muted'>
+									<FiInfo className='me-2' />
+									<strong>Note:</strong> Scheduler automatically sends numbers at <strong>14:45</strong> of each 15-minute interval (e.g., 10:14:45, 10:29:45, 10:44:45, 10:59:45). 
+									If a manual entry is added via "Add Result" form for that time slot, the scheduler will <strong>skip</strong> sending for that slot.
+								</p>
+							</div>
+						</Card.Body>
+					</Card>
+				</Col>
+			</Row>
 			</div>
 		</div>
 	);

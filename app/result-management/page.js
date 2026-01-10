@@ -33,7 +33,7 @@ const page = () => {
 	const [form, setForm] = useState({
 		categoryname: 'Minidiswar',
 		date: moment().format('YYYY-MM-DD'),
-		number: '00',
+		number: '', // Empty by default, user will enter manually
 		phone: '',
 		result: [{ time: '', number: '' }],
 		next_result: nextResultISO,

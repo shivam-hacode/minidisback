@@ -44,11 +44,7 @@ const page = () => {
 	const [currentTime, setCurrentTime] = useState(moment());
 	const [nextSchedulerTime, setNextSchedulerTime] = useState(getNextSchedulerTime());
 	const [schedulerStatus, setSchedulerStatus] = useState('Active');
-	const [schedulerEnabled, setSchedulerEnabled] = useState(() => {
-		// Load from localStorage, default to true
-		const saved = localStorage.getItem('schedulerEnabled');
-		return saved !== null ? saved === 'true' : true;
-	});
+	const [schedulerEnabled, setSchedulerEnabled] = useState(true); // Default to true, will load from localStorage in useEffect
 
 	// Logout function
 	const handleLogout = () => {
@@ -195,13 +191,25 @@ const page = () => {
 		apiforResults();
 	}, []);
 
+	// Load scheduler state from localStorage on mount
+	useEffect(() => {
+		if (typeof window !== 'undefined') {
+			const saved = localStorage.getItem('schedulerEnabled');
+			if (saved !== null) {
+				setSchedulerEnabled(saved === 'true');
+			}
+		}
+	}, []);
+
 	// Save scheduler state to localStorage when it changes
 	useEffect(() => {
-		localStorage.setItem('schedulerEnabled', schedulerEnabled.toString());
-		if (schedulerEnabled) {
-			setSchedulerStatus('Active');
-		} else {
-			setSchedulerStatus('Disabled');
+		if (typeof window !== 'undefined') {
+			localStorage.setItem('schedulerEnabled', schedulerEnabled.toString());
+			if (schedulerEnabled) {
+				setSchedulerStatus('Active');
+			} else {
+				setSchedulerStatus('Disabled');
+			}
 		}
 	}, [schedulerEnabled]);
 
